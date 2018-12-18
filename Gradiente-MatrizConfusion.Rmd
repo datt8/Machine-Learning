@@ -1,0 +1,129 @@
+---
+title: "Práctica 1"
+author: "Daniel Tomé Gordo"
+date: "6 de diciembre de 2018"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+  pdf_document:
+    toc: yes
+---
+
+
+# Test the *TestGradientDescent* function with the training set (*4_1_data.csv*). Obtain the confusion matrix. 
+
+Se leen los datos que se usarán para la obtención de la matriz de confusión pedida
+
+```{r}
+read.csv("data/4_1_data.csv") -> data
+```
+
+Se crean las distintas funciones accesorias de la función que resultará en la matriz de confusión
+
+```{r}
+Sigmoid <- function(x) { 
+  1 / (1 + exp(-x))
+}
+
+CostFunction <- function(parameters, X, Y) {
+  n <- nrow(X)
+  g <- Sigmoid(X %*% parameters)
+  J <- (1/n) * sum((-Y * log(g)) - ((1 - Y) * log(1 - g)))
+  return(J)
+}
+
+TestGradientDescent <- function(iterations = 1200, X, Y) {
+  
+  # Se inicializan los parámetros para la función
+  parameters <- rep(x = 0, times = 3)
+  
+  # Se ve la situación inicial
+  print(paste("Initial Cost Function value: ", 
+              convergence <- c(CostFunction(parameters, X, Y)), sep = ""))
+  
+  # Se optimizan los parámetros
+  parameters_optimization <- optim(par = parameters, fn = CostFunction, X = X, Y = Y, 
+                                   control = list(maxit = iterations))
+  
+  # Se renombran los parámetros como los óptimos
+  parameters <- parameters_optimization$par
+  
+  # Se imprime la situación final
+  print(paste("Final Cost Function value: ", 
+              convergence <- c(CostFunction(parameters, X, Y)), sep = ""))
+
+ return(parameters) 
+}
+```
+
+Se crea la función que resultará en la matriz de confusión pedida
+
+```{r}
+MatrizConfusion <- function(X, Y, parameters, cutoff = 0.68) {
+ tabla.res <- NA # Creo la tabla vacía
+ 
+ # Lleno la tabla con el resultado de multiplicar cada fila por los parámetros
+ for (i in 1:nrow(X)) {
+    res <- Sigmoid(t(as.numeric(X[i,])) %*% parameters)
+    tabla.res <- rbind(tabla.res, res)
+ } 
+ tabla.res <- tabla.res[-1,] # Quito el primer dato (NA) ya que es inservible
+ 
+ # Creo la matriz de confusión
+ matriz <- table(Y, ifelse(tabla.res > cutoff, 1, 0)) 
+ 
+ return(matriz)
+}
+```
+
+Se crean los datos con los que se probará la función de la matriz de confusión
+
+```{r}
+X <- as.matrix(data[, c(1,2)])
+X <- cbind(rep(1, nrow(X)), X)
+Y <- as.matrix(data$label)
+par.optimos <- TestGradientDescent(X = X, Y = Y) # Devuelve los parámetros óptimos
+
+MatrizConfusion(X = X, Y = Y, par.optimos, cutoff = 0.68)
+```
+
+# Obtain a graph representing how the cost function evolves depending of the number of iterations.
+
+Se crea la función que hará el gráfico
+
+```{r}
+GraficaCoste <- function(max_iterations = 500, X, Y) {
+  
+  # Creo la tabla de resultados
+  graph.table <- data.frame(cbind(seq(from = 1, to = max_iterations, by = 1), NA))
+  names(graph.table) <- c("Iteration", "Cost") 
+  
+  # Inicializo el proceso
+  parameters <- rep(x = 0, times = 3)
+  iterations <- 0
+  
+  # Para cada iteración hallo el coste 
+  for (i in 1:max_iterations) {
+    parameters_optimization <- optim(par = parameters, fn = CostFunction, X = X, Y = Y, 
+                                   control = list(maxit = iterations))
+    iterations <- iterations + 1
+    graph.table[i, 2] <- CostFunction(parameters_optimization$par, X, Y)
+  }
+  # Grafico el resultado
+  plot <- ggplot(data = graph.table, aes(x = Iteration, y = Cost)) +
+    geom_smooth(se = FALSE)
+  return(plot)
+}
+```
+
+Se prueba la función y se obtiene el posterior gráfico
+
+```{r message=FALSE}
+library(ggplot2)
+GraficaCoste(max_iterations = 500, X = X, Y = Y)
+```
+
